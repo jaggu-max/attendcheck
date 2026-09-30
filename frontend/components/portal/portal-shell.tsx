@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { Menu, X, LogOut, GraduationCap } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
 export interface NavItem {
@@ -60,14 +61,17 @@ export function PortalShell({
       <div className="flex min-h-screen">
         {/* Desktop sidebar */}
         <aside className="glass hidden w-[280px] flex-shrink-0 flex-col p-5 lg:flex">
-          <div className="mb-8 flex items-center gap-2.5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white">
-              <GraduationCap className="h-5 w-5" />
+          <div className="mb-8 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white">
+                <GraduationCap className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-sm font-extrabold leading-tight">GMIT Smart</p>
+                <p className={cn("text-xs font-bold", accent)}>{role} Portal</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-extrabold leading-tight">GMIT Smart</p>
-              <p className={cn("text-xs font-bold", accent)}>{role} Portal</p>
-            </div>
+            <ThemeToggle />
           </div>
           <NavList />
           <button
@@ -87,9 +91,12 @@ export function PortalShell({
               <Menu className="h-5 w-5" />
             </button>
             <p className="text-sm font-extrabold">{role} Portal</p>
-            <button onClick={onLogout} className="glass rounded-xl p-2.5 text-rose-600">
-              <LogOut className="h-5 w-5" />
-            </button>
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              <button onClick={onLogout} className="glass rounded-xl p-2.5 text-rose-600">
+                <LogOut className="h-5 w-5" />
+              </button>
+            </div>
           </div>
 
           <header className="mb-6">

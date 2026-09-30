@@ -64,6 +64,7 @@ function doPost(e) {
         case 'submitAttendance': return json(submitAttendance_(body));
         case 'updateAttendance': return json(updateAttendance_(body));
         case 'undoAttendance': return json(undoAttendance_(body));
+        case 'deleteAttendance': return json(deleteAttendance_(body));
         default: return json({ success: false, error: 'Unknown POST action.' });
       }
     } finally { lock.releaseLock(); }
@@ -258,14 +259,63 @@ function logSheet_() {
   return sh;
 }
 
+/* ----------------------------- LOG ----------------------------- */
+
+function normDate_(d) {
+  if (!d) return '';
+  if (d instanceof Date) {
+    var y = d.getFullYear();
+    var m = ('0' + (d.getMonth() + 1)).slice(-2);
+    var day = ('0' + d.getDate()).slice(-2);
+    return y + '-' + m + '-' + day;
+  }
+  var s = String(d).trim();
+  if (s.indexOf('T') > 0) s = s.split('T')[0];
+  if (s.length > 10 && !isNaN(Date.parse(s))) {
+    var dt = new Date(s);
+    if (!isNaN(dt.getTime())) {
+      var y2 = dt.getFullYear();
+      var m2 = ('0' + (dt.getMonth() + 1)).slice(-2);
+      var day2 = ('0' + dt.getDate()).slice(-2);
+      return y2 + '-' + m2 + '-' + day2;
+    }
+  }
+  return s;
+}
+
+function logSheet_() {
+  var sh = ss_().getSheetByName(LOG_SHEET);
+  if (!sh) {
+    sh = ss_().insertSheet(LOG_SHEET);
+    sh.appendRow(['Timestamp','Section','CourseCode','Subject','Teacher','Date','Operation',
+      'ConductedBefore','ConductedAfter','StateJSON','PrevStateJSON','Undone','Note']);
+  }
+  return sh;
+}
+
 function logRows_() {
   var sh = logSheet_();
   var v = sh.getDataRange().getValues();
   var rows = [];
   for (var r = 1; r < v.length; r++) {
-    rows.push({ row: r + 1, timestamp: v[r][0], section: v[r][1], courseCode: v[r][2], subject: v[r][3],
-      teacher: v[r][4], date: v[r][5], operation: v[r][6], conductedBefore: v[r][7], conductedAfter: v[r][8],
-      state: safeParse_(v[r][9]), prevState: safeParse_(v[r][10]), undone: v[r][11] === true || v[r][11] === 'TRUE', note: v[r][12] });
+    rows.push({
+      row: r + 1,
+      timestamp: v[r][0],
+      section: String(v[r][1] || '').trim().toUpperCase(),
+      courseCode: String(v[r][2] || '').trim().toUpperCase(),
+      subject: v[r][3],
+      teacher: v[r][4],
+      date: normDate_(v[r][5]),
+      operation: v[r][6],
+      conductedBefore: v[r][7],
+      conductedAfter: v[r][8],
+      state: safeParse_(v[r][9]),
+      prevState: safeParse_(v[r][10]),
+      undone: v[r][11] === true || v[r][11] === 'TRUE',
+      note: v[r][12],
+      sessionNumber: v[r][13] ? Number(v[r][13]) : null,
+      sessionId: v[r][14] ? String(v[r][14]) : null
+    });
   }
   return rows;
 }
@@ -273,36 +323,67 @@ function logRows_() {
 function safeParse_(s) { try { return JSON.parse(s || '{}'); } catch (e) { return {}; } }
 
 function appendLog_(o) {
-  logSheet_().appendRow([new Date().toISOString(), o.section, o.courseCode, o.subject, o.teacher,
-    o.date, o.operation, o.conductedBefore, o.conductedAfter, JSON.stringify(o.state || {}),
-    JSON.stringify(o.prevState || {}), false, o.note || '']);
+  var dStr = normDate_(o.date);
+  logSheet_().appendRow([
+    new Date().toISOString(),
+    String(o.section).toUpperCase(),
+    String(o.courseCode).toUpperCase(),
+    o.subject,
+    o.teacher,
+    "'" + dStr,
+    o.operation,
+    o.conductedBefore,
+    o.conductedAfter,
+    JSON.stringify(o.state || {}),
+    JSON.stringify(o.prevState || {}),
+    false,
+    o.note || '',
+    o.sessionNumber || 1,
+    o.sessionId || ''
+  ]);
 }
 
 function sessionKeyMatch_(x, section, courseCode, date) {
   return String(x.section).toUpperCase() === String(section).toUpperCase() &&
          String(x.courseCode).toUpperCase() === String(courseCode).toUpperCase() &&
-         String(x.date) === String(date);
+         normDate_(x.date) === normDate_(date);
 }
 
-/** latest non-undone operation for a session */
-function latestOp_(section, courseCode, date) {
-  var rows = logRows_(); var found = null;
+function getNextSessionNumber_(section, courseCode, date) {
+  var rows = logRows_();
+  var count = 0;
+  rows.forEach(function (x) {
+    if (!x.undone && (x.operation === 'submit' || x.operation === 'edit') && sessionKeyMatch_(x, section, courseCode, date)) {
+      count++;
+    }
+  });
+  return count + 1;
+}
+
+/** find log entry by row ID, sessionId or latest for session */
+function findOp_(section, courseCode, date, logId, timestamp, sessionId) {
+  var rows = logRows_();
+  if (sessionId) {
+    for (var k = rows.length - 1; k >= 0; k--) {
+      if (rows[k].sessionId === String(sessionId) && !rows[k].undone) return rows[k];
+    }
+  }
+  if (logId) {
+    for (var i = 0; i < rows.length; i++) {
+      if (rows[i].row === Number(logId) && !rows[i].undone) return rows[i];
+    }
+  }
+  if (timestamp) {
+    for (var j = 0; j < rows.length; j++) {
+      if (String(rows[j].timestamp) === String(timestamp) && !rows[j].undone) return rows[j];
+    }
+  }
+  // fallback to latest active op for section + courseCode + date
+  var found = null;
   rows.forEach(function (x) {
     if (!x.undone && x.operation !== 'undo' && sessionKeyMatch_(x, section, courseCode, date)) found = x;
   });
   return found;
-}
-
-function anyActiveForSession_(section, courseCode, date) {
-  // true if a submit exists that is not fully undone
-  var rows = logRows_(); var active = false;
-  rows.forEach(function (x) {
-    if (sessionKeyMatch_(x, section, courseCode, date)) {
-      if (x.operation === 'submit' && !x.undone) active = true;
-      if (x.operation === 'undo') active = false;
-    }
-  });
-  return active;
 }
 
 function markUndone_(rowNum) {
@@ -326,12 +407,12 @@ function submitAttendance_(body) {
   if (!section || !courseCode || !date) return { success: false, error: 'section, courseCode and date are required.' };
   if (!Object.keys(attendance).length) return { success: false, error: 'No attendance provided.' };
 
-  if (anyActiveForSession_(section, courseCode, date))
-    return { success: false, error: 'Attendance already submitted for this date.', code: 'DUPLICATE' };
-
   var sec = readSection_(section);
   var sub = findSubject_(sec, courseCode);
   if (!sub) return { success: false, error: 'Subject not found.' };
+
+  var sessionNum = getNextSessionNumber_(section, courseCode, date);
+  var sessId = String(section).toUpperCase() + '_' + String(courseCode).toUpperCase() + '_' + normDate_(date) + '_C' + sessionNum;
 
   var conductedBefore = sub.conducted;
   var conductedAfter = conductedBefore + 1;
@@ -346,12 +427,34 @@ function submitAttendance_(body) {
     else absent++;
   });
 
-  appendLog_({ section: section, courseCode: sub.courseCode, subject: sub.subject, teacher: sub.teacher,
-    date: date, operation: 'submit', conductedBefore: conductedBefore, conductedAfter: conductedAfter,
-    state: attendance, prevState: {} });
+  appendLog_({
+    section: section,
+    courseCode: sub.courseCode,
+    subject: sub.subject,
+    teacher: sub.teacher,
+    date: date,
+    operation: 'submit',
+    conductedBefore: conductedBefore,
+    conductedAfter: conductedAfter,
+    state: attendance,
+    prevState: {},
+    sessionNumber: sessionNum,
+    sessionId: sessId
+  });
 
-  return { success: true, operation: 'submit', section: String(section).toUpperCase(), courseCode: sub.courseCode,
-    date: date, conducted: conductedAfter, present: present, absent: absent, total: present + absent };
+  return {
+    success: true,
+    operation: 'submit',
+    section: String(section).toUpperCase(),
+    courseCode: sub.courseCode,
+    date: date,
+    sessionNumber: sessionNum,
+    sessionId: sessId,
+    conducted: conductedAfter,
+    present: present,
+    absent: absent,
+    total: present + absent
+  };
 }
 
 function updateAttendance_(body) {
@@ -359,8 +462,8 @@ function updateAttendance_(body) {
   var attendance = normMap_(body.attendance);
   if (!section || !courseCode || !date) return { success: false, error: 'section, courseCode and date are required.' };
 
-  var last = latestOp_(section, courseCode, date);
-  if (!last) return { success: false, error: 'No submitted attendance found for this date.' };
+  var last = findOp_(section, courseCode, date, body.logId, body.timestamp, body.sessionId);
+  if (!last) return { success: false, error: 'No submitted attendance found for this date/session.' };
 
   var sec = readSection_(section);
   var sub = findSubject_(sec, courseCode);
@@ -378,26 +481,48 @@ function updateAttendance_(body) {
     if (nw === 'P') present++; else absent++;
   });
 
-  appendLog_({ section: section, courseCode: sub.courseCode, subject: sub.subject, teacher: sub.teacher,
-    date: date, operation: 'edit', conductedBefore: sub.conducted, conductedAfter: sub.conducted,
-    state: attendance, prevState: prev });
+  appendLog_({
+    section: section,
+    courseCode: sub.courseCode,
+    subject: sub.subject,
+    teacher: sub.teacher,
+    date: date,
+    operation: 'edit',
+    conductedBefore: sub.conducted,
+    conductedAfter: sub.conducted,
+    state: attendance,
+    prevState: prev,
+    sessionNumber: last.sessionNumber || 1,
+    sessionId: last.sessionId || ''
+  });
 
-  return { success: true, operation: 'edit', section: String(section).toUpperCase(), courseCode: sub.courseCode,
-    date: date, conducted: sub.conducted, present: present, absent: absent, total: present + absent };
+  return {
+    success: true,
+    operation: 'edit',
+    section: String(section).toUpperCase(),
+    courseCode: sub.courseCode,
+    date: date,
+    sessionNumber: last.sessionNumber || 1,
+    sessionId: last.sessionId || '',
+    conducted: sub.conducted,
+    present: present,
+    absent: absent,
+    total: present + absent
+  };
 }
 
 function undoAttendance_(body) {
   var section = body.section, courseCode = body.courseCode, date = body.date;
   if (!section || !courseCode || !date) return { success: false, error: 'section, courseCode and date are required.' };
 
-  var last = latestOp_(section, courseCode, date);
+  var last = findOp_(section, courseCode, date, body.logId, body.timestamp, body.sessionId);
   if (!last) return { success: false, error: 'Attendance has already been undone.', code: 'ALREADY_UNDONE' };
 
   var sec = readSection_(section);
   var sub = findSubject_(sec, courseCode);
   if (!sub) return { success: false, error: 'Subject not found.' };
 
-  if (last.operation === 'submit') {
+  if (last.operation === 'submit' || last.operation === 'edit') {
     var conductedAfter = Math.max(0, sub.conducted - 1);
     sec.sheet.getRange(3, sub.col + 1).setValue(conductedAfter);
     var st = last.state || {};
@@ -408,55 +533,91 @@ function undoAttendance_(body) {
       }
     });
     markUndone_(last.row);
-    appendLog_({ section: section, courseCode: sub.courseCode, subject: sub.subject, teacher: sub.teacher,
-      date: date, operation: 'undo', conductedBefore: sub.conducted, conductedAfter: conductedAfter,
-      state: {}, prevState: st, note: 'undo submit' });
+    appendLog_({
+      section: section,
+      courseCode: sub.courseCode,
+      subject: sub.subject,
+      teacher: sub.teacher,
+      date: date,
+      operation: 'undo',
+      conductedBefore: sub.conducted,
+      conductedAfter: conductedAfter,
+      state: {},
+      prevState: st,
+      sessionNumber: last.sessionNumber || 1,
+      sessionId: last.sessionId || '',
+      note: 'undo submit'
+    });
     return { success: true, operation: 'undo', undone: 'submit', conducted: conductedAfter };
   }
 
-  // undo an edit: revert attended to prevState using current(state) vs prevState
-  var cur2 = last.state || {}, prev2 = last.prevState || {};
-  sec.students.forEach(function (stu) {
-    var nowMark = cur2[stu.usn]; var oldMark = prev2[stu.usn];
-    if (nowMark === undefined && oldMark === undefined) return;
-    var delta = ((oldMark === 'P' ? 1 : 0) - (nowMark === 'P' ? 1 : 0));
-    if (delta !== 0) {
-      var cur = Number(stu._vals[sub.col] || 0) || 0;
-      sec.sheet.getRange(stu.row + 1, sub.col + 1).setValue(Math.max(0, cur + delta));
-    }
-  });
-  markUndone_(last.row);
-  appendLog_({ section: section, courseCode: sub.courseCode, subject: sub.subject, teacher: sub.teacher,
-    date: date, operation: 'undo', conductedBefore: sub.conducted, conductedAfter: sub.conducted,
-    state: prev2, prevState: cur2, note: 'undo edit' });
-  return { success: true, operation: 'undo', undone: 'edit', conducted: sub.conducted };
+  return { success: false, error: 'Cannot undo operation.' };
+}
+
+function deleteAttendance_(body) {
+  var section = body.section, courseCode = body.courseCode, date = body.date;
+  if (!section || !courseCode || !date) return { success: false, error: 'section, courseCode and date are required.' };
+
+  var last = findOp_(section, courseCode, date, body.logId, body.timestamp, body.sessionId);
+  if (!last) return { success: false, error: 'No history record found for this date.' };
+
+  if (!last.undone) {
+    undoAttendance_(body);
+  }
+
+  return { success: true, operation: 'delete', section: String(section).toUpperCase(), courseCode: courseCode, date: date };
 }
 
 /* ----------------------------- HISTORY / DATE ----------------------------- */
 
-function attendanceForDate_(section, courseCode, date) {
-  var last = latestOp_(section, courseCode, date);
+function attendanceForDate_(section, courseCode, date, logId, timestamp, sessionId) {
+  var last = findOp_(section, courseCode, date, logId, timestamp, sessionId);
   var sec = readSection_(section);
   var sub = findSubject_(sec, courseCode);
   if (!sub) return { success: false, error: 'Subject not found.' };
   if (!last) return { success: true, submitted: false, section: String(section).toUpperCase(),
     courseCode: sub.courseCode, subject: sub.subject, teacher: sub.teacher, date: date, attendance: {} };
   return { success: true, submitted: true, section: String(section).toUpperCase(), courseCode: sub.courseCode,
-    subject: sub.subject, teacher: sub.teacher, date: date, conducted: sub.conducted, attendance: last.state || {} };
+    subject: sub.subject, teacher: sub.teacher, date: date, sessionNumber: last.sessionNumber || 1,
+    sessionId: last.sessionId || '', conducted: sub.conducted, attendance: last.state || {} };
 }
 
 function history_(section, courseCode) {
   var rows = logRows_();
+  var dateSessionCounts = {};
   var out = [];
   rows.forEach(function (x) {
     if (section && String(x.section).toUpperCase() !== String(section).toUpperCase()) return;
     if (courseCode && String(x.courseCode).toUpperCase() !== String(courseCode).toUpperCase()) return;
     if (x.operation === 'undo') return;
+    if (x.undone) return;
+
+    var sKey = String(x.section).toUpperCase() + '_' + String(x.courseCode).toUpperCase() + '_' + normDate_(x.date);
+    dateSessionCounts[sKey] = (dateSessionCounts[sKey] || 0) + 1;
+    var sessionNum = x.sessionNumber || dateSessionCounts[sKey];
+    var sessId = x.sessionId || (sKey + '_C' + sessionNum);
+
     var st = x.state || {}; var present = 0, absent = 0;
     Object.keys(st).forEach(function (k) { if (st[k] === 'P') present++; else absent++; });
-    out.push({ timestamp: x.timestamp, date: x.date, section: x.section, courseCode: x.courseCode,
-      subject: x.subject, teacher: x.teacher, operation: x.operation, present: present, absent: absent,
-      total: present + absent, conducted: x.conductedAfter, undone: x.undone });
+
+    out.push({
+      logId: x.row,
+      timestamp: x.timestamp,
+      date: x.date,
+      sessionNumber: sessionNum,
+      classLabel: 'Class ' + sessionNum,
+      sessionId: sessId,
+      section: x.section,
+      courseCode: x.courseCode,
+      subject: x.subject,
+      teacher: x.teacher,
+      operation: x.operation,
+      present: present,
+      absent: absent,
+      total: present + absent,
+      conducted: x.conductedAfter,
+      undone: x.undone
+    });
   });
   out.reverse();
   return { success: true, history: out };

@@ -48,7 +48,7 @@ export function LecturerAuth() {
         <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">Section</label>
         <div className="grid grid-cols-3 gap-2">
           {SECTIONS.map((s) => (
-            <button key={s} type="button" data-testid={`lec-section-${s}`} onClick={() => setSection(s)}
+            <button key={s} type="button" data-testid={`lec-section-${s}`} onClick={() => setSection(s)} suppressHydrationWarning
               className={cn("h-11 rounded-xl border text-sm font-bold transition",
                 section === s ? "border-indigo-600 bg-indigo-600 text-white" : "border-white/60 bg-white/50 hover:bg-white/80 dark:bg-white/5")}>
               {s}
@@ -58,7 +58,7 @@ export function LecturerAuth() {
 
         <label className="mb-2 mt-5 block text-xs font-bold uppercase tracking-wide text-slate-500">Password</label>
         <input data-testid="lec-course-input" type="password" value={courseCode} onChange={(e) => setCourseCode(e.target.value.toUpperCase())}
-          placeholder="Enter password" autoCapitalize="characters" autoComplete="current-password" spellCheck={false}
+          placeholder="Enter password" autoCapitalize="characters" autoComplete="current-password" spellCheck={false} suppressHydrationWarning
           className="h-12 w-full rounded-xl border border-white/60 bg-white/60 px-4 font-semibold tracking-wide outline-none focus:border-indigo-600 dark:bg-white/5" />
 
         {error && (
@@ -67,7 +67,7 @@ export function LecturerAuth() {
           </div>
         )}
 
-        <button type="submit" disabled={loading} data-testid="lec-auth-submit"
+        <button type="submit" disabled={loading} data-testid="lec-auth-submit" suppressHydrationWarning
           className="mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 font-bold text-white transition hover:bg-indigo-700 disabled:opacity-60">
           {loading ? <><Loader2 className="h-4 w-4 animate-spin" />Authorizing…</> : <>Continue<ArrowRight className="h-4 w-4" /></>}
         </button>

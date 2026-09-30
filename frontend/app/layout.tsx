@@ -52,7 +52,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${inter.variable} ${jakarta.variable}`} suppressHydrationWarning>
-      <body className="min-h-screen font-sans antialiased">
+      <body className="min-h-screen font-sans antialiased" suppressHydrationWarning>
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>

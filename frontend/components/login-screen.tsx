@@ -80,6 +80,7 @@ export function LoginScreen() {
                 aria-checked={section === s}
                 data-testid={`section-${s}`}
                 onClick={() => setSection(s)}
+                suppressHydrationWarning
                 className={cn(
                   "tnum h-11 rounded-md border text-sm font-semibold transition-all duration-150",
                   section === s
@@ -107,6 +108,7 @@ export function LoginScreen() {
             autoCapitalize="characters"
             autoCorrect="off"
             spellCheck={false}
+            suppressHydrationWarning
             className="tnum h-12 w-full rounded-md border border-border bg-surface px-4 text-[15px] font-medium tracking-wide text-ink placeholder:text-muted/60 focus:border-royal focus:outline-none"
           />
 
