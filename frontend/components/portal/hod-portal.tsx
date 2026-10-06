@@ -357,10 +357,12 @@ export function HodPortal() {
                       <td className="p-3">{s.subjectName}</td>
                       <td className="p-3 font-semibold">{s.attended}</td>
                       <td className="p-3">{s.conducted}</td>
-                      <td className={cn("p-3 font-bold tabular-nums", s.percentage < 75 ? "text-rose-600" : "text-emerald-600")}>
+                      <td className={cn("p-3 font-bold tabular-nums", s.isStarted ? (s.percentage < 75 ? "text-rose-600" : "text-emerald-600") : "text-slate-400")}>
                         {s.isStarted ? `${s.percentage}%` : "—"}
                       </td>
-                      <td className={cn("p-3 text-xs font-bold", statusColor[s.status])}>{s.status?.replace("_", " ")}</td>
+                      <td className={cn("p-3 text-xs font-bold", statusColor[s.isStarted ? (s.status || "ON_TRACK") : "NOT_STARTED"])}>
+                        {s.isStarted ? (s.status || "ON_TRACK").replace("_", " ") : "NOT STARTED"}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

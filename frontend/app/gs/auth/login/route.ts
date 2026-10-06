@@ -59,7 +59,8 @@ export async function POST(req: Request) {
       name: data.student.name,
     });
     return NextResponse.json({ student: data.student });
-  } catch (err) {
+  } catch (err: any) {
+    console.error("Login error detail:", err?.stack || err);
     if (err instanceof StudentNotFoundError) {
       return NextResponse.json(
         { error: "We couldn't find a student with that Section and USN." },
@@ -72,6 +73,6 @@ export async function POST(req: Request) {
         { status: 503 }
       );
     }
-    return NextResponse.json({ error: "Something went wrong." }, { status: 500 });
+    return NextResponse.json({ error: err?.message || "Something went wrong." }, { status: 500 });
   }
 }

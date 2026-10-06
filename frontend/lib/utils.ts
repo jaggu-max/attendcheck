@@ -27,6 +27,7 @@ export function timeAgo(iso: string): string {
   return `${d}d ago`;
 }
 
-export function formatPct(n: number): string {
+export function formatPct(n: number | null | undefined): string {
+  if (n === null || n === undefined || Number.isNaN(Number(n))) return "—";
   return `${Number(n).toFixed(2).replace(/\.00$/, "")}%`;
 }

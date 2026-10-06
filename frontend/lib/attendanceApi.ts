@@ -1,12 +1,12 @@
 import "server-only";
 
-const BASE = process.env.GOOGLE_ATTENDANCE_API_URL;
+const BASE = process.env.GOOGLE_ATTENDANCE_API_URL || "http://localhost:8000/api/attendance";
 const TIMEOUT = 25000;
 
 export class ApiUnavailableError extends Error {}
 export class ApiNotDeployedError extends Error {
   constructor() {
-    super("The attendance API does not yet support this action. Please deploy the upgraded Apps Script.");
+    super("The attendance API service is currently unavailable.");
   }
 }
 

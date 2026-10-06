@@ -57,7 +57,7 @@ export async function setSession(data: SessionData): Promise<void> {
   const jar = await cookies();
   jar.set(COOKIE, createToken(data), {
     httpOnly: true,
-    secure: true,
+    secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
     maxAge: MAX_AGE,
@@ -68,7 +68,7 @@ export async function clearSession(): Promise<void> {
   const jar = await cookies();
   jar.set(COOKIE, "", {
     httpOnly: true,
-    secure: true,
+    secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
     maxAge: 0,

@@ -23,7 +23,7 @@ export interface RawSubject {
   teacher: string;
   attended: number;
   conducted: number;
-  percentage: number;
+  percentage: number | null;
   minimumRequired: number;
   status: ApiStatus;
   isStarted: boolean;
@@ -38,7 +38,7 @@ export interface Subject extends RawSubject {
 export interface Overall {
   attended: number;
   conducted: number;
-  percentage: number;
+  percentage: number | null;
   minimumRequired: number;
   status: ApiStatus;
   isStarted: boolean;

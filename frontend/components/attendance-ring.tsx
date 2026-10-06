@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
 interface AttendanceRingProps {
-  percentage: number;
+  percentage: number | null | undefined;
   hex: string;
   size?: number;
   stroke?: number;
@@ -34,7 +34,8 @@ export function AttendanceRing({
   const c = size / 2;
   const r = (size - stroke) / 2;
   const circumference = 2 * Math.PI * r;
-  const pct = Math.max(0, Math.min(100, percentage));
+  const validPct = percentage === null || percentage === undefined || Number.isNaN(percentage);
+  const pct = validPct ? 0 : Math.max(0, Math.min(100, percentage));
   const finalOffset = circumference * (1 - pct / 100);
   const offset = shown ? finalOffset : circumference;
   const tickAngle = (threshold / 100) * 360;

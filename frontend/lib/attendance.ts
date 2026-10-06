@@ -2,7 +2,7 @@ import "server-only";
 import type { AttendanceData, RawSubject, Subject } from "./types";
 import { deriveStatus, MIN_REQUIRED } from "./status";
 
-const API_URL = process.env.GOOGLE_ATTENDANCE_API_URL;
+const API_URL = process.env.GOOGLE_ATTENDANCE_API_URL || "http://localhost:8000/api/attendance";
 const TTL = Number(process.env.ATTENDANCE_CACHE_TTL_MS ?? 60000);
 
 interface CacheEntry {
@@ -46,10 +46,13 @@ function key(section: string, usn: string): string {
 }
 
 interface RawResponse {
-  success: boolean;
+  success?: boolean;
   error?: string;
   updatedAt?: string;
   minimumRequired?: number;
+  usn?: string;
+  name?: string;
+  section?: string;
   student?: { usn: string; name: string; section: string };
   overall?: Omit<AttendanceData["overall"], "displayStatus">;
   subjects?: RawSubject[];
@@ -57,16 +60,50 @@ interface RawResponse {
 
 function normalize(raw: RawResponse): AttendanceData {
   const minimumRequired = raw.minimumRequired ?? MIN_REQUIRED;
-  const subjects: Subject[] = (raw.subjects ?? []).map((s) => ({
-    ...s,
-    displayStatus: deriveStatus(s.percentage, s.isStarted, minimumRequired),
-  }));
-  const o = raw.overall!;
+  const rawSubjects = raw.subjects ?? [];
+
+  const subjects: Subject[] = rawSubjects.map((s) => {
+    const courseClean = (s.courseCode || "").trim();
+    const teacherClean = (s.teacher || "").trim();
+    const classTaken = Number(s.conducted || 0);
+
+    const isStarted = Boolean(s.isStarted && classTaken > 0);
+    const pct = isStarted ? (typeof s.percentage === "number" ? s.percentage : Math.round(((s.attended ?? 0) / classTaken) * 10000) / 100) : null;
+
+    return {
+      ...s,
+      isStarted,
+      percentage: pct,
+      attended: isStarted ? (s.attended ?? 0) : 0,
+      conducted: isStarted ? classTaken : 0,
+      teacher: teacherClean && teacherClean.toLowerCase() !== "faculty" ? teacherClean : "Faculty to be assigned",
+      displayStatus: deriveStatus(pct, isStarted, minimumRequired),
+    };
+  });
+
+  const activeSubjects = subjects.filter((s) => s.isStarted && s.conducted > 0);
+  const totalAttended = activeSubjects.reduce((acc, s) => acc + s.attended, 0);
+  const totalConducted = activeSubjects.reduce((acc, s) => acc + s.conducted, 0);
+
+  const isOverallStarted = totalConducted > 0;
+  const overallPercentage = isOverallStarted ? Math.round((totalAttended / totalConducted) * 10000) / 100 : null;
+
+  const student = raw.student ?? {
+    usn: raw.usn ?? "",
+    name: raw.name ?? "",
+    section: raw.section ?? "",
+  };
+
   return {
-    student: raw.student!,
+    student,
     overall: {
-      ...o,
-      displayStatus: deriveStatus(o.percentage, o.isStarted, minimumRequired),
+      attended: totalAttended,
+      conducted: totalConducted,
+      percentage: overallPercentage,
+      minimumRequired,
+      status: isOverallStarted ? (overallPercentage! >= 85 ? "EXCELLENT" : overallPercentage! >= 75 ? "ON_TRACK" : "SHORTAGE") : "NOT_STARTED",
+      isStarted: isOverallStarted,
+      displayStatus: deriveStatus(overallPercentage, isOverallStarted, minimumRequired),
     },
     subjects,
     minimumRequired,

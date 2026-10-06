@@ -12,15 +12,12 @@ import { cn } from "@/lib/utils";
 import type { FacultySession } from "@/lib/roles-auth";
 
 const NAV: NavItem[] = [
-  { key: "mark", label: "Mark Attendance", icon: ClipboardCheck },
+  { key: "students", label: "Subject Students", icon: Users },
   { key: "history", label: "Attendance History", icon: History },
   { key: "below75", label: "Below 75%", icon: AlertTriangle },
   { key: "analytics", label: "Analytics", icon: BarChart3 },
-  { key: "students", label: "Students", icon: Users },
   { key: "export", label: "Export Data", icon: Download },
 ];
-
-type Mark = "P" | "A";
 
 const statusColor: Record<string, string> = {
   EXCELLENT: "text-emerald-600", ON_TRACK: "text-indigo-600",
@@ -29,16 +26,12 @@ const statusColor: Record<string, string> = {
 
 export function LecturerPortal({ faculty }: { faculty: FacultySession }) {
   const router = useRouter();
-  const [tab, setTab] = useState("mark");
-  const [date, setDate] = useState(todayISO());
+  const [tab, setTab] = useState("students");
   const [students, setStudents] = useState<any[]>([]);
   const [conducted, setConducted] = useState(0);
-  const [marks, setMarks] = useState<Record<string, Mark>>({});
   const [search, setSearch] = useState("");
   const [hist, setHist] = useState<any[]>([]);
   const [viewData, setViewData] = useState<{ date: string; attendance: Record<string, string> } | null>(null);
-  const [editing, setEditing] = useState(false);
-  const [editLogId, setEditLogId] = useState<number | null>(null);
   const [filterMode, setFilterMode] = useState<"below75" | "above75" | "all">("below75");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -53,16 +46,11 @@ export function LecturerPortal({ faculty }: { faculty: FacultySession }) {
       if (res.students) {
         setStudents(res.students);
         setConducted(res.conducted || 0);
-        if (!editing) {
-          const initial: Record<string, Mark> = {};
-          res.students.forEach((s: any) => { initial[s.usn] = "P"; });
-          setMarks(initial);
-        }
       }
     } catch (e) {
       setError(friendly(e));
     }
-  }, [faculty.section, faculty.courseCode, editing]);
+  }, [faculty.section, faculty.courseCode]);
 
   const loadHistory = useCallback(async () => {
     const cacheKey = `gmit_hist_${faculty.section}_${faculty.courseCode}`;
@@ -88,66 +76,6 @@ export function LecturerPortal({ faculty }: { faculty: FacultySession }) {
   const logout = async () => { await fetch("/gs/faculty/session", { method: "DELETE" }); router.replace("/lecturer"); };
 
   const total = students.length;
-  const present = Object.values(marks).filter((m) => m === "P").length;
-  const absent = total - present;
-  const classPct = total ? Math.round((present / total) * 10000) / 100 : 0;
-
-  const setAll = (m: Mark) => { const n: Record<string, Mark> = {}; students.forEach((s) => (n[s.usn] = m)); setMarks(n); };
-  const toggle = (usn: string, m: Mark) => setMarks((p) => ({ ...p, [usn]: m }));
-
-  const filtered = students.filter((s) =>
-    !search || s.usn.includes(search.toUpperCase()) || s.name.toUpperCase().includes(search.toUpperCase()));
-
-  const submit = async () => {
-    if (!total) { flash("No students loaded."); return; }
-    setBusy(true);
-    try {
-      const action = editing ? "updateAttendance" : "submitAttendance";
-      const payload: any = {
-        action,
-        section: faculty.section,
-        courseCode: faculty.courseCode,
-        date,
-        attendance: marks,
-      };
-      if (editing && editLogId) {
-        payload.logId = editLogId;
-      }
-      const j = await writeApi(payload);
-      flash(editing ? "Attendance updated on the Google Sheet." : `Submitted • ${j.present || present} present, ${j.absent || absent} absent.`);
-      setEditing(false);
-      setEditLogId(null);
-      await Promise.all([loadStudents(), loadHistory()]);
-      setTab("history");
-    } catch (e: any) {
-      const msg = friendly(e);
-      if (!editing && /already submitted/i.test(msg)) {
-        flash("Google Apps Script needs a NEW deployment version: Open Google Sheet -> Extensions -> Apps Script -> Deploy -> Manage Deployments -> Edit -> New Version -> Deploy.");
-      } else {
-        flash(msg);
-      }
-    } finally { setBusy(false); }
-  };
-
-  const startEdit = async (h: any) => {
-    setBusy(true);
-    try {
-      const j = await readApi("attendance", {
-        section: faculty.section,
-        courseCode: faculty.courseCode,
-        date: h.date,
-        logId: String(h.logId || ""),
-      });
-      const m: Record<string, Mark> = {};
-      students.forEach((s) => { m[s.usn] = (j.attendance?.[s.usn] === "P" ? "P" : "A"); });
-      setMarks(m);
-      setDate(h.date);
-      setEditLogId(h.logId || null);
-      setEditing(true);
-      setViewData(null);
-      setTab("mark");
-    } catch (e) { flash(friendly(e)); } finally { setBusy(false); }
-  };
 
   const view = async (h: any) => {
     setBusy(true);
@@ -162,50 +90,21 @@ export function LecturerPortal({ faculty }: { faculty: FacultySession }) {
     } catch (e) { flash(friendly(e)); } finally { setBusy(false); }
   };
 
-  const undo = async (h: any) => {
-    if (!confirm(`Undo attendance for ${faculty.subject} • ${faculty.section} • ${prettyDate(h.date)}? This restores the previous state on the Google Sheet.`)) return;
-    setBusy(true);
-    try {
-      await writeApi({
-        action: "undoAttendance",
-        section: faculty.section,
-        courseCode: faculty.courseCode,
-        date: h.date,
-        logId: h.logId,
-      });
-      flash("Attendance undone — Sheet restored.");
-      await Promise.all([loadStudents(), loadHistory()]);
-    } catch (e) { flash(friendly(e)); } finally { setBusy(false); }
-  };
-
-  const del = async (h: any) => {
-    if (!confirm(`Delete attendance record for ${faculty.subject} • ${faculty.section} • ${prettyDate(h.date)}? This will remove the record and reverse attendance totals on the Google Sheet.`)) return;
-    setBusy(true);
-    try {
-      await writeApi({
-        action: "deleteAttendance",
-        section: faculty.section,
-        courseCode: faculty.courseCode,
-        date: h.date,
-        logId: h.logId,
-      });
-      flash("Attendance record deleted and Sheet totals updated.");
-      await Promise.all([loadStudents(), loadHistory()]);
-    } catch (e) { flash(friendly(e)); } finally { setBusy(false); }
-  };
-
   const exportCsv = () => {
     if (!students.length) return;
     const head = ["USN", "Name", "Attended", "Conducted", "Percentage", "Status"];
-    const rows = students.map((s) => [s.usn, s.name, s.attended, s.conducted, s.percentage, s.status]);
+    const rows = students.map((s) => [s.usn, s.name, s.attended, s.conducted, s.percentage ?? "—", s.status]);
     const csv = [head, ...rows].map((r) => r.map((x) => `"${String(x).replace(/"/g, '""')}"`).join(",")).join("\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
     const a = document.createElement("a"); a.href = url;
     a.download = `${faculty.section}_${faculty.courseCode}_attendance.csv`; a.click(); URL.revokeObjectURL(url);
   };
 
-  const isStarted = (s: any) => (s.conducted > 0) || typeof s.percentage === "number";
+  const isStarted = (s: any) => Boolean(s.isStarted && (s.conducted > 0 || typeof s.percentage === "number"));
   const getPct = (s: any) => typeof s.percentage === "number" ? s.percentage : (s.conducted > 0 ? Math.round((s.attended / s.conducted) * 100) : 0);
+
+  const filtered = students.filter((s) =>
+    !search || s.usn.includes(search.toUpperCase()) || s.name.toUpperCase().includes(search.toUpperCase()));
 
   const filteredBelowAbove = students.filter((s) => {
     const started = isStarted(s);
@@ -221,7 +120,7 @@ export function LecturerPortal({ faculty }: { faculty: FacultySession }) {
     ? Math.round(startedStudents.reduce((a, s) => a + getPct(s), 0) / startedStudents.length)
     : 0;
 
-  const meta = `${faculty.subject} • ${faculty.courseCode} • ${faculty.section} • ${faculty.teacher} • ${conducted} conducted`;
+  const meta = `${faculty.subject} • ${faculty.courseCode} • Section ${faculty.section} • ${faculty.teacher || "Faculty"} • ${conducted} conducted`;
 
   return (
     <PortalShell role="Lecturer" title={faculty.subject} subtitle={meta} nav={NAV} active={tab} onSelect={setTab} onLogout={logout}>
@@ -230,91 +129,34 @@ export function LecturerPortal({ faculty }: { faculty: FacultySession }) {
 
       {loading ? (
         <GlassCard className="flex items-center gap-2 text-sm text-slate-600"><Loader2 className="h-4 w-4 animate-spin" />Loading students…</GlassCard>
-      ) : tab === "mark" ? (
+      ) : tab === "students" ? (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <Stat label="Students" value={total} icon />
-            <Stat label="Present" value={present} tone="emerald" />
-            <Stat label="Absent" value={absent} tone="rose" />
-            <Stat label="Class %" value={`${classPct}%`} tone="indigo" />
-          </div>
-
           <GlassCard>
-            <div className="flex flex-wrap items-center gap-3">
-              <div>
-                <label className="mr-2 text-sm font-semibold">Date</label>
-                <input type="date" value={date} onChange={(e) => setDate(e.target.value)} data-testid="lec-date"
-                  className="rounded-lg border border-white/60 bg-white/60 px-3 py-1.5 text-sm dark:bg-white/5" />
-                {editing && <span className="ml-2 rounded-full bg-amber-500/15 px-2 py-1 text-xs font-bold text-amber-600">EDITING</span>}
-              </div>
-              <div className="flex gap-2">
-                <button onClick={() => setAll("P")} data-testid="mark-all-present" className="flex items-center gap-1.5 rounded-lg bg-emerald-500/15 px-3 py-1.5 text-sm font-bold text-emerald-600 transition hover:bg-emerald-500/25"><Check className="h-4 w-4" /> Mark All Present</button>
-                <button onClick={() => setAll("A")} data-testid="mark-all-absent" className="flex items-center gap-1.5 rounded-lg bg-rose-500/15 px-3 py-1.5 text-sm font-bold text-rose-600 transition hover:bg-rose-500/25"><X className="h-4 w-4" /> Mark All Absent</button>
-              </div>
-              <div className="relative ml-auto">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search USN or name" data-testid="lec-search"
-                  className="rounded-lg border border-white/60 bg-white/60 py-1.5 pl-9 pr-3 text-sm dark:bg-white/5" />
-              </div>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search students by USN or name..." data-testid="lec-search"
+                className="w-full rounded-xl border border-white/60 bg-white/60 py-2 pl-9 pr-4 text-sm font-medium outline-none dark:bg-white/5" />
             </div>
           </GlassCard>
 
           <GlassCard className="overflow-x-auto p-0">
-            <table className="w-full min-w-[640px] text-sm">
+            <table className="w-full min-w-[560px] text-sm">
               <thead className="border-b border-white/40 text-left text-xs uppercase text-slate-500">
-                <tr>
-                  <th className="p-3">#</th>
-                  <th className="p-3">USN</th>
-                  <th className="p-3">Name</th>
-                  <th className="p-3 text-center">Today Attendance</th>
-                  <th className="p-3">Current</th>
-                  <th className="p-3">%</th>
-                  <th className="p-3">Status</th>
-                </tr>
+                <tr><th className="p-3">USN</th><th className="p-3">Name</th><th className="p-3">Attended</th><th className="p-3">Conducted</th><th className="p-3">%</th><th className="p-3">Status</th></tr>
               </thead>
               <tbody>
-                {filtered.map((s, i) => {
+                {filtered.map((s) => {
                   const p = getPct(s);
                   const st = isStarted(s);
                   return (
                     <tr key={s.usn} className="border-b border-white/20" data-testid={`lec-row-${s.usn}`}>
-                      <td className="p-3 text-slate-400">{i + 1}</td>
                       <td className="p-3 font-semibold">{s.usn}</td>
                       <td className="p-3 font-medium">{s.name}</td>
-                      <td className="p-3">
-                        <div className="flex items-center justify-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => toggle(s.usn, "P")}
-                            data-testid={`present-${s.usn}`}
-                            className={cn(
-                              "flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-bold transition",
-                              marks[s.usn] === "P"
-                                ? "bg-emerald-600 text-white shadow-sm"
-                                : "bg-white/60 text-slate-600 hover:bg-emerald-500/15 hover:text-emerald-600 dark:bg-white/5"
-                            )}
-                          >
-                            <Check className="h-3.5 w-3.5" /> Present
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => toggle(s.usn, "A")}
-                            data-testid={`absent-${s.usn}`}
-                            className={cn(
-                              "flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-bold transition",
-                              marks[s.usn] === "A"
-                                ? "bg-rose-600 text-white shadow-sm"
-                                : "bg-white/60 text-slate-600 hover:bg-rose-500/15 hover:text-rose-600 dark:bg-white/5"
-                            )}
-                          >
-                            <X className="h-3.5 w-3.5" /> Absent
-                          </button>
-                        </div>
-                      </td>
-                      <td className="p-3 tabular-nums">{s.attended}/{s.conducted}</td>
-                      <td className="p-3 tabular-nums">{st ? `${p}%` : "—"}</td>
-                      <td className={cn("p-3 text-xs font-bold", statusColor[s.status || "NOT_STARTED"])}>
-                        {(s.status || "NOT_STARTED").replace("_", " ")}
+                      <td className="p-3 font-semibold text-emerald-600">{st ? s.attended : 0}</td>
+                      <td className="p-3">{st ? s.conducted : 0}</td>
+                      <td className="p-3 font-bold tabular-nums">{st ? `${p}%` : "—"}</td>
+                      <td className={cn("p-3 text-xs font-bold", statusColor[st ? (s.status || "ON_TRACK") : "NOT_STARTED"])}>
+                        {st ? (s.status || "ON_TRACK").replace("_", " ") : "NOT STARTED"}
                       </td>
                     </tr>
                   );
@@ -322,12 +164,6 @@ export function LecturerPortal({ faculty }: { faculty: FacultySession }) {
               </tbody>
             </table>
           </GlassCard>
-
-          <button onClick={submit} disabled={busy} data-testid="submit-attendance"
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 font-bold text-white transition hover:bg-indigo-700 disabled:opacity-60">
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardCheck className="h-5 w-5" />}
-            {editing ? "Update Attendance" : "Submit Attendance"}
-          </button>
         </div>
       ) : tab === "history" ? (
         <div className="space-y-4">
@@ -350,7 +186,7 @@ export function LecturerPortal({ faculty }: { faculty: FacultySession }) {
             <GlassCard className="text-sm text-slate-600">No attendance history yet for this subject.</GlassCard>
           ) : (
             <GlassCard className="overflow-x-auto p-0">
-              <table className="w-full min-w-[720px] text-sm">
+              <table className="w-full min-w-[640px] text-sm">
                 <thead className="border-b border-white/40 text-left text-xs uppercase text-slate-500">
                   <tr>
                     <th className="p-3">Date</th>
@@ -361,7 +197,7 @@ export function LecturerPortal({ faculty }: { faculty: FacultySession }) {
                     <th className="p-3">Present</th>
                     <th className="p-3">Absent</th>
                     <th className="p-3">Conducted</th>
-                    <th className="p-3 text-right">Actions</th>
+                    <th className="p-3 text-right">View</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -375,13 +211,8 @@ export function LecturerPortal({ faculty }: { faculty: FacultySession }) {
                       <td className="p-3 font-semibold text-emerald-600">{h.present}</td>
                       <td className="p-3 font-semibold text-rose-600">{h.absent}</td>
                       <td className="p-3 tabular-nums">{h.conducted}</td>
-                      <td className="p-3">
-                        <div className="flex justify-end gap-1.5">
-                          <button onClick={() => view(h)} data-testid={`view-${h.date}`} className="rounded-lg bg-white/60 p-2 text-slate-600 hover:bg-white dark:bg-white/5" title="View"><Eye className="h-4 w-4" /></button>
-                          <button onClick={() => startEdit(h)} data-testid={`edit-${h.date}`} className="rounded-lg bg-indigo-500/15 p-2 text-indigo-600 hover:bg-indigo-500/25" title="Edit"><Pencil className="h-4 w-4" /></button>
-                          <button onClick={() => undo(h)} data-testid={`undo-${h.date}`} className="rounded-lg bg-rose-500/15 p-2 text-rose-600 hover:bg-rose-500/25" title="Undo"><RotateCcw className="h-4 w-4" /></button>
-                          <button onClick={() => del(h)} data-testid={`del-${h.date}`} className="rounded-lg bg-rose-500/15 p-2 text-rose-600 hover:bg-rose-500/25" title="Delete"><Trash2 className="h-4 w-4" /></button>
-                        </div>
+                      <td className="p-3 text-right">
+                        <button onClick={() => view(h)} data-testid={`view-${h.date}`} className="rounded-lg bg-white/60 p-2 text-slate-600 hover:bg-white dark:bg-white/5" title="View"><Eye className="h-4 w-4" /></button>
                       </td>
                     </tr>
                   ))}
@@ -417,14 +248,15 @@ export function LecturerPortal({ faculty }: { faculty: FacultySession }) {
                 <tbody>
                   {filteredBelowAbove.map((s) => {
                     const p = getPct(s);
+                    const st = isStarted(s);
                     return (
                       <tr key={s.usn} className="border-b border-white/20">
                         <td className="p-3 font-semibold">{s.usn}</td>
                         <td className="p-3">{s.name}</td>
-                        <td className="p-3">{s.attended}</td>
-                        <td className="p-3">{s.conducted}</td>
-                        <td className={cn("p-3 font-bold tabular-nums", p < 75 ? "text-rose-600" : "text-emerald-600")}>{p}%</td>
-                        <td className={cn("p-3 text-xs font-bold", statusColor[s.status || "NOT_STARTED"])}>{(s.status || "NOT_STARTED").replace("_", " ")}</td>
+                        <td className="p-3">{st ? s.attended : 0}</td>
+                        <td className="p-3">{st ? s.conducted : 0}</td>
+                        <td className={cn("p-3 font-bold tabular-nums", st ? (p < 75 ? "text-rose-600" : "text-emerald-600") : "text-slate-400")}>{st ? `${p}%` : "—"}</td>
+                        <td className={cn("p-3 text-xs font-bold", statusColor[st ? (s.status || "NOT_STARTED") : "NOT_STARTED"])}>{st ? (s.status || "NOT_STARTED").replace("_", " ") : "NOT STARTED"}</td>
                       </tr>
                     );
                   })}
@@ -465,40 +297,6 @@ export function LecturerPortal({ faculty }: { faculty: FacultySession }) {
                 </div>
               </div>
             </div>
-          </GlassCard>
-        </div>
-      ) : tab === "students" ? (
-        <div className="space-y-4">
-          <GlassCard>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Filter students by USN or name..."
-                className="w-full rounded-xl border border-white/60 bg-white/60 py-2 pl-9 pr-4 text-sm font-medium outline-none dark:bg-white/5" />
-            </div>
-          </GlassCard>
-
-          <GlassCard className="overflow-x-auto p-0">
-            <table className="w-full min-w-[560px] text-sm">
-              <thead className="border-b border-white/40 text-left text-xs uppercase text-slate-500">
-                <tr><th className="p-3">USN</th><th className="p-3">Name</th><th className="p-3">Attended</th><th className="p-3">Conducted</th><th className="p-3">%</th><th className="p-3">Status</th></tr>
-              </thead>
-              <tbody>
-                {filtered.map((s) => {
-                  const p = getPct(s);
-                  const st = isStarted(s);
-                  return (
-                    <tr key={s.usn} className="border-b border-white/20">
-                      <td className="p-3 font-semibold">{s.usn}</td>
-                      <td className="p-3">{s.name}</td>
-                      <td className="p-3 font-semibold text-emerald-600">{s.attended}</td>
-                      <td className="p-3">{s.conducted}</td>
-                      <td className="p-3 font-bold tabular-nums">{st ? `${p}%` : "—"}</td>
-                      <td className={cn("p-3 text-xs font-bold", statusColor[s.status || "NOT_STARTED"])}>{(s.status || "NOT_STARTED").replace("_", " ")}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
           </GlassCard>
         </div>
       ) : (

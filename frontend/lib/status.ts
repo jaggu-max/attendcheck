@@ -8,11 +8,11 @@ export const MIN_REQUIRED = 75;
  * and must never look like genuine perfect attendance.
  */
 export function deriveStatus(
-  percentage: number,
+  percentage: number | null | undefined,
   isStarted: boolean,
   minimum = MIN_REQUIRED
 ): DisplayStatus {
-  if (!isStarted) return "NOT_STARTED";
+  if (!isStarted || percentage === null || percentage === undefined) return "NOT_STARTED";
   if (percentage >= 90) return "EXCELLENT";
   if (percentage >= minimum) return "ON_TRACK";
   if (percentage >= 50) return "AT_RISK";
@@ -71,8 +71,8 @@ export const STATUS_THEME: Record<DisplayStatus, StatusTheme> = {
   },
 };
 
-export function healthMessage(percentage: number, isStarted: boolean): string {
-  if (!isStarted) return "No classes have been conducted yet.";
+export function healthMessage(percentage: number | null | undefined, isStarted: boolean): string {
+  if (!isStarted || percentage === null || percentage === undefined) return "No classes have been conducted yet.";
   if (percentage >= 90)
     return "Outstanding — your attendance is comfortably above the requirement.";
   if (percentage >= MIN_REQUIRED)
