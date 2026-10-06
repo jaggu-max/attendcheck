@@ -1,24 +1,30 @@
 services:
+  # FastAPI Backend Service
   - type: web
-    name: gmit-smart-attendance
-    runtime: node
-    rootDir: frontend
-    buildCommand: yarn install && yarn build
-    startCommand: yarn start:prod
+    name: gmit-attendance-backend
+    env: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
     envVars:
-      - key: NODE_VERSION
-        value: "20"
-      - key: GOOGLE_ATTENDANCE_API_URL
-        sync: false
-      - key: MONGO_URL
-        sync: false
-      - key: DB_NAME
-        value: gmit_attendance
-      - key: SESSION_SECRET
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+      - key: GOOGLE_DRIVE_FILE_ID
         sync: false
       - key: ALLOWED_SECTIONS
         value: 3A,3B,5A,5B,7A,7B
-      - key: ATTENDANCE_CACHE_TTL_MS
-        value: "60000"
-      - key: HOD_PASSCODE
+      - key: ATTENDANCE_CACHE_TTL_SECONDS
+        value: "300"
+
+  # Next.js Frontend Web Service
+  - type: web
+    name: gmit-attendance-frontend
+    env: node
+    rootDir: frontend
+    buildCommand: yarn install && yarn build
+    startCommand: yarn start
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: NEXT_PUBLIC_BACKEND_URL
         sync: false
