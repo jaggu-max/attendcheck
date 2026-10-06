@@ -1,6 +1,14 @@
 import "server-only";
 
-const BASE = process.env.GOOGLE_ATTENDANCE_API_URL || "http://localhost:8000/api/attendance";
+const rawBackend =
+  process.env.GOOGLE_ATTENDANCE_API_URL ||
+  process.env.NEXT_PUBLIC_BACKEND_URL ||
+  process.env.BACKEND_URL ||
+  "http://localhost:8000";
+
+const BASE = rawBackend.endsWith("/api/attendance")
+  ? rawBackend
+  : `${rawBackend.replace(/\/$/, "")}/api/attendance`;
 const TIMEOUT = 25000;
 
 export class ApiUnavailableError extends Error {}
