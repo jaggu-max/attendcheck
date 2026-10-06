@@ -2,7 +2,7 @@ import "server-only";
 import type { AttendanceData, RawSubject, Subject } from "./types";
 import { deriveStatus, MIN_REQUIRED } from "./status";
 
-const API_URL = process.env.GOOGLE_ATTENDANCE_API_URL || "http://localhost:8000/api/attendance";
+const API_URL = process.env.GOOGLE_ATTENDANCE_API_URL || (process.env.NODE_ENV === "production" ? "mock" : "http://localhost:8000/api/attendance");
 const TTL = Number(process.env.ATTENDANCE_CACHE_TTL_MS ?? 60000);
 
 interface CacheEntry {
