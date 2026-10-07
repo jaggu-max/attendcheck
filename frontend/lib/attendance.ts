@@ -114,6 +114,7 @@ function normalize(raw: RawResponse): AttendanceData {
 
 export class AttendanceUnavailableError extends Error {}
 export class StudentNotFoundError extends Error {}
+export class SectionMismatchError extends Error {}
 
 async function fetchFromSource(
   section: string,
@@ -144,19 +145,25 @@ async function fetchFromSource(
   } catch {
     throw new AttendanceUnavailableError("network");
   }
-  if (!res.ok) throw new AttendanceUnavailableError(`status ${res.status}`);
-
-  let json: RawResponse;
+  let json: any;
   try {
-    json = (await res.json()) as RawResponse;
+    json = await res.json();
   } catch {
+    if (!res.ok) throw new AttendanceUnavailableError(`status ${res.status}`);
     throw new AttendanceUnavailableError("parse");
   }
 
-  if (!json.success) {
+  if (!res.ok) {
+    const errMsg = json.detail || json.error || `status ${res.status}`;
+    if (res.status === 403) throw new SectionMismatchError(errMsg);
+    if (res.status === 404) throw new StudentNotFoundError(errMsg);
+    throw new AttendanceUnavailableError(errMsg);
+  }
+
+  if (json.success === false) {
     throw new StudentNotFoundError(json.error ?? "not found");
   }
-  return normalize(json);
+  return normalize(json as RawResponse);
 }
 
 /**

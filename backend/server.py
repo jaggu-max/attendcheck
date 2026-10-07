@@ -141,6 +141,12 @@ async def get_attendance(
         if not record:
             raise HTTPException(status_code=404, detail="Student record not found")
 
+        if section:
+            rec_sec = record.get("section", "").strip().upper()
+            req_sec = section.strip().upper()
+            if rec_sec and rec_sec != req_sec:
+                raise HTTPException(status_code=403, detail="This USN does not belong to the selected section.")
+
         return record
 
     if action == "students" and section:

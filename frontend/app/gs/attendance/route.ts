@@ -5,6 +5,7 @@ import {
   cacheAge,
   StudentNotFoundError,
   AttendanceUnavailableError,
+  SectionMismatchError,
 } from "@/lib/attendance";
 
 export const runtime = "nodejs";
@@ -29,6 +30,12 @@ export async function GET(req: Request) {
       cacheAgeMs: cacheAge(session.section, session.usn) ?? 0,
     });
   } catch (err) {
+    if (err instanceof SectionMismatchError) {
+      return NextResponse.json(
+        { error: "This USN does not belong to the selected section." },
+        { status: 403 }
+      );
+    }
     if (err instanceof StudentNotFoundError) {
       return NextResponse.json(
         { error: "Your attendance record could not be found." },

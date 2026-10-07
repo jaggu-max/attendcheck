@@ -8,6 +8,7 @@ import {
   normalizeUsn,
   StudentNotFoundError,
   AttendanceUnavailableError,
+  SectionMismatchError,
 } from "@/lib/attendance";
 import { setSession } from "@/lib/auth";
 
@@ -61,6 +62,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ student: data.student });
   } catch (err: any) {
     console.error("Login error detail:", err?.stack || err);
+    if (err instanceof SectionMismatchError) {
+      return NextResponse.json(
+        { error: "This USN does not belong to the selected section." },
+        { status: 403 }
+      );
+    }
     if (err instanceof StudentNotFoundError) {
       return NextResponse.json(
         { error: "We couldn't find a student with that Section and USN." },
