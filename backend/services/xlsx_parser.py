@@ -15,7 +15,7 @@ def parse_xlsx_bytes(file_bytes: bytes) -> Dict[str, Any]:
     Parse GMIT Attendance Excel Workbook bytes.
     Extracts student records, subjects, conducted counts, and calculates percentages across all section worksheets.
     """
-    wb = openpyxl.load_workbook(filename=io.BytesIO(file_bytes), data_only=True)
+    wb = openpyxl.load_workbook(filename=io.BytesIO(file_bytes), data_only=True, read_only=True)
     
     sections = []
     students_by_usn: Dict[str, Dict[str, Any]] = {}

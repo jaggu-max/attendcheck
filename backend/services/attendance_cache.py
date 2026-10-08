@@ -9,7 +9,7 @@ from services.xlsx_parser import parse_xlsx_bytes
 
 logger = logging.getLogger(__name__)
 
-CACHE_TTL_SECONDS = int(os.environ.get("ATTENDANCE_CACHE_SECONDS", "60"))
+CACHE_TTL_SECONDS = int(os.environ.get("ATTENDANCE_CACHE_TTL_SECONDS", "300"))
 
 
 class AttendanceCacheManager:

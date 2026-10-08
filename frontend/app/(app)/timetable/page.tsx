@@ -220,6 +220,25 @@ export default function TimetablePage() {
                 let dataSlotIndex = 0; 
                 let skipNextCol = false; 
 
+                if (dayData.day === "Sat") {
+                  return (
+                    <tr key={dayData.day} className={cn("transition-colors relative", isToday ? "bg-royal/[0.04]" : "")}>
+                      <td className={cn(
+                        "border-b border-r border-border p-3 font-bold sticky left-0 z-10 w-16 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.02)]",
+                        isToday ? "bg-surface text-royal" : "bg-surface text-ink"
+                      )}>
+                        <div className="flex flex-col items-center">
+                          <span>{dayData.day}</span>
+                          {isToday && <span className="text-[9px] uppercase font-bold text-royal mt-1 tracking-widest bg-royal/10 px-1.5 py-0.5 rounded">Today</span>}
+                        </div>
+                      </td>
+                      <td colSpan={TIME_SLOTS.length} className="border-b border-r border-border bg-surface p-3 text-center text-sm font-semibold text-muted/50 tracking-widest py-8">
+                        NO SCHEDULED CLASSES
+                      </td>
+                    </tr>
+                  );
+                }
+
                 return (
                   <tr key={dayData.day} className={cn("transition-colors relative", isToday ? "bg-royal/[0.04]" : "")}>
                     <td className={cn(
