@@ -79,6 +79,10 @@ function normalize(raw: RawResponse): AttendanceData {
       teacher: teacherClean && teacherClean.toLowerCase() !== "faculty" ? teacherClean : "Faculty to be assigned",
       displayStatus: deriveStatus(pct, isStarted, minimumRequired),
     };
+  }).filter((s) => {
+    if (s.isStarted) return true;
+    const name = (s.subject || "").toUpperCase();
+    return name === "RM" || name === "ESM";
   });
 
   const activeSubjects = subjects.filter((s) => s.isStarted && s.conducted > 0);
