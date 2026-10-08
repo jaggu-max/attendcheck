@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, BookOpen, TrendingUp, User } from "lucide-react";
+import { Home, BookOpen, TrendingUp, User, Calendar, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import type { SessionData } from "@/lib/types";
@@ -10,7 +10,9 @@ import { AttendanceProvider } from "./attendance-provider";
 import { ProfileProvider } from "./profile-provider";
 import { Logo } from "./logo";
 
-const NAV = [
+type NavItem = { href: string; label: string; icon: LucideIcon };
+
+const BASE_NAV: NavItem[] = [
   { href: "/dashboard", label: "Home", icon: Home },
   { href: "/subjects", label: "Subjects", icon: BookOpen },
   { href: "/forecast", label: "Forecast", icon: TrendingUp },
@@ -31,6 +33,11 @@ export function AppFrame({
 }) {
   const pathname = usePathname();
 
+  const navItems: NavItem[] = [...BASE_NAV];
+  if (student.section?.toUpperCase() === "5A") {
+    navItems.splice(2, 0, { href: "/timetable", label: "Timetable", icon: Calendar });
+  }
+
   return (
     <ProfileProvider>
       <AttendanceProvider>
@@ -39,7 +46,7 @@ export function AppFrame({
           <aside className="hidden lg:flex sticky top-0 h-screen flex-col border-r border-border bg-surface px-5 py-7">
             <Logo className="mb-10" />
             <nav className="flex flex-col gap-1">
-              {NAV.map(({ href, label, icon: Icon }) => {
+              {navItems.map(({ href, label, icon: Icon }) => {
                 const active = isActive(pathname, href);
                 return (
                   <Link
@@ -83,7 +90,7 @@ export function AppFrame({
             style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
           >
             <div className="mx-auto flex max-w-md items-stretch justify-around px-2">
-              {NAV.map(({ href, label, icon: Icon }) => {
+              {navItems.map(({ href, label, icon: Icon }) => {
                 const active = isActive(pathname, href);
                 return (
                   <Link
