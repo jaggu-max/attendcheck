@@ -28,7 +28,7 @@ export function isValidSection(section: string): boolean {
   return ALLOWED_SECTIONS.includes(section.trim().toUpperCase());
 }
 
-/** GMIT USN pattern e.g. 4GM24CS052 */
+/** GMIT USN pattern e.g. 4GM24CS051 */
 export function isValidUsn(usn: string): boolean {
   return /^[0-9][A-Z]{2}[0-9]{2}[A-Z]{2}[0-9]{3}$/.test(usn.trim().toUpperCase());
 }

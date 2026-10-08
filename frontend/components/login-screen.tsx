@@ -104,7 +104,7 @@ export function LoginScreen() {
             data-testid="usn-input"
             value={usn}
             onChange={(e) => setUsn(e.target.value.toUpperCase())}
-            placeholder="4GM24CS052"
+            placeholder="4GM24CS051"
             autoCapitalize="characters"
             autoCorrect="off"
             spellCheck={false}
