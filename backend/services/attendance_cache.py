@@ -4,12 +4,15 @@ import logging
 from typing import Dict, Any, Optional, List
 from datetime import datetime, timezone
 
+from pathlib import Path
+
 from services.google_drive_service import GoogleDriveService
 from services.xlsx_parser import parse_xlsx_bytes
 
 logger = logging.getLogger(__name__)
 
-CACHE_TTL_SECONDS = int(os.environ.get("ATTENDANCE_CACHE_TTL_SECONDS", "300"))
+CACHE_TTL_SECONDS = int(os.environ.get("ATTENDANCE_CACHE_TTL_SECONDS", os.environ.get("ATTENDANCE_CACHE_SECONDS", "900")))
+DISK_CACHE_FILE = Path(__file__).parent.parent / "cached_attendance.xlsx"
 
 
 class AttendanceCacheManager:
@@ -21,6 +24,15 @@ class AttendanceCacheManager:
         self.last_modified_drive: Optional[str] = None
         self.status: str = "uninitialized"
         self.last_error: Optional[str] = None
+
+        # Pre-load from local disk cache on startup if available for instant warm boot
+        if DISK_CACHE_FILE.exists():
+            try:
+                self._parsed_data = parse_xlsx_bytes(DISK_CACHE_FILE.read_bytes())
+                self.status = "warm"
+                logger.info(f"Loaded {len(self._parsed_data.get('students_by_usn', {}))} students from local disk cache.")
+            except Exception as e:
+                logger.warning(f"Could not load local disk cache on startup: {e}")
 
     def refresh_cache(self, force_download: bool = False) -> Dict[str, Any]:
         """
@@ -54,6 +66,13 @@ class AttendanceCacheManager:
             # File has changed or force download or cold cache: download and parse
             logger.info(f"Downloading latest XLSX file from Google Drive (File ID: {self.drive_service.file_id})...")
             xlsx_bytes = self.drive_service.download_file_bytes()
+            
+            # Persist downloaded file to disk cache
+            try:
+                DISK_CACHE_FILE.write_bytes(xlsx_bytes)
+            except Exception as e:
+                logger.warning(f"Could not persist XLSX bytes to disk: {e}")
+
             parsed = parse_xlsx_bytes(xlsx_bytes)
 
             # Update cache state

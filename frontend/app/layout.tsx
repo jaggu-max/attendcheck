@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
+import { ServiceWorkerRegister } from "@/components/service-worker-register";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -55,7 +56,10 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.webmanifest" crossOrigin="use-credentials" />
       </head>
       <body className="min-h-screen font-sans antialiased" suppressHydrationWarning>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <ServiceWorkerRegister />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

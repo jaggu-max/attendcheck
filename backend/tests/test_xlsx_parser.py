@@ -65,6 +65,7 @@ def test_parse_xlsx_bytes_sections_and_students():
     assert sepm["attended"] == 7
     assert sepm["conducted"] == 13
     assert sepm["percentage"] == 53.85
+    assert sepm["minimumRequired"] == 75
     assert sepm["status"] == "SHORTAGE"
     assert sepm["recovery"]["needed"] > 0
 
