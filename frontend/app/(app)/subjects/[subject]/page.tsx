@@ -16,11 +16,13 @@ import { formatPct } from "@/lib/utils";
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border border-border bg-surface px-4 py-3">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-muted">
+    <div className="min-w-0 rounded-md border border-border bg-surface px-3 py-3 sm:px-4">
+      <p className="truncate text-[11px] font-medium uppercase tracking-wide text-muted">
         {label}
       </p>
-      <p className="tnum mt-1 text-lg font-semibold text-ink">{value}</p>
+      <p className="tnum mt-1 truncate text-base font-semibold text-ink sm:text-lg">
+        {value}
+      </p>
     </div>
   );
 }
@@ -100,10 +102,13 @@ export default function SubjectDetailPage() {
         </p>
       </section>
 
-      <section className="grid grid-cols-3 gap-3">
+      <section className="grid grid-cols-3 gap-2.5 sm:gap-3">
         <Stat label="Attended" value={String(subject.attended)} />
         <Stat label="Conducted" value={String(subject.conducted)} />
-        <Stat label="Required" value={`${subject.minimumRequired}%`} />
+        <Stat
+          label="Required"
+          value={`${subject.minimumRequired ?? data.minimumRequired ?? 75}%`}
+        />
       </section>
 
       <RecoveryCard subject={subject} />
@@ -114,7 +119,10 @@ export default function SubjectDetailPage() {
           <p className="mb-3 text-xs text-muted">
             How your attendance changes with upcoming classes.
           </p>
-          <ForecastChart points={forecast} minimum={subject.minimumRequired} />
+          <ForecastChart
+            points={forecast}
+            minimum={subject.minimumRequired ?? data.minimumRequired ?? 75}
+          />
         </section>
       )}
     </div>

@@ -74,6 +74,7 @@ function normalize(raw: RawResponse): AttendanceData {
       ...s,
       isStarted,
       percentage: pct,
+      minimumRequired: s.minimumRequired ?? minimumRequired,
       attended: isStarted ? (s.attended ?? 0) : 0,
       conducted: isStarted ? classTaken : 0,
       teacher: teacherClean && teacherClean.toLowerCase() !== "faculty" ? teacherClean : "Faculty to be assigned",

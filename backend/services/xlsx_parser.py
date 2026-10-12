@@ -287,6 +287,7 @@ def parse_worksheet(sheet: openpyxl.worksheet.worksheet.Worksheet, section: str)
                 "attended": attended if is_started else 0,
                 "conducted": conducted if is_started else 0,
                 "percentage": percentage,
+                "minimumRequired": 75,
                 "status": status,
                 "isStarted": is_started,
                 "buffer": {"canMiss": can_miss, "message": buffer_msg},
