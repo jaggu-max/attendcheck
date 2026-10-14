@@ -141,6 +141,10 @@ export function LoginScreen() {
               </>
             )}
           </Button>
+
+          <p className="mt-4 text-center text-xs text-muted">
+            🔄 <strong>Attendance is updated every Friday.</strong>
+          </p>
         </form>
 
       </div>
