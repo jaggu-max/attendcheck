@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Loader2, AlertCircle } from "lucide-react";
+import { ArrowRight, Loader2, AlertCircle, BookOpen } from "lucide-react";
 import { Logo } from "./logo";
 import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
@@ -145,6 +146,15 @@ export function LoginScreen() {
           <p className="mt-4 text-center text-xs text-muted">
             🔄 <strong>Attendance is updated every Friday.</strong>
           </p>
+
+          <Link
+            href="/study-materials"
+            className="mt-3 flex items-center justify-center gap-1.5 text-xs font-medium text-royal transition-colors hover:text-royal/80"
+            data-testid="study-materials-link"
+          >
+            <BookOpen className="h-3.5 w-3.5" />
+            Study Materials Portal →
+          </Link>
         </form>
 
       </div>
