@@ -335,7 +335,7 @@ function TocDetailView({
       {/* PQP */}
       <section className="space-y-3">
         <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-          Previous Question Papers (PQP)
+          Previous Question Papers (PYQ)
         </h3>
 
         {TOC_QUESTION_PAPERS.length === 0 ? (

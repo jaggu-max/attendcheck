@@ -94,4 +94,23 @@ export const TOC_MODULES: TocModule[] = [
  * Add entries here when question paper files are available.
  * Example: { label: "Dec 2023", url: "/toc/BCS503-pqp-dec2023.pdf" }
  */
-export const TOC_QUESTION_PAPERS: { label: string; url: string }[] = [];
+export const TOC_QUESTION_PAPERS: { label: string; url: string }[] = [
+  { label: "WhatsApp Image 2026-10-26 at 3.27.04 PM", url: "/pypapers/WhatsApp Image 2026-10-26 at 3.27.04 PM.jpeg" },
+  { label: "WhatsApp Image 2026-10-26 at 3.27.05 PM", url: "/pypapers/WhatsApp Image 2026-10-26 at 3.27.05 PM.jpeg" },
+  { label: "WhatsApp Image 2026-10-26 at 3.27.06 PM (1)", url: "/pypapers/WhatsApp Image 2026-10-26 at 3.27.06 PM (1).jpeg" },
+  { label: "WhatsApp Image 2026-10-26 at 3.27.06 PM (2)", url: "/pypapers/WhatsApp Image 2026-10-26 at 3.27.06 PM (2).jpeg" },
+  { label: "WhatsApp Image 2026-10-26 at 3.27.06 PM", url: "/pypapers/WhatsApp Image 2026-10-26 at 3.27.06 PM.jpeg" },
+  { label: "WhatsApp Image 2026-10-26 at 3.27.07 PM", url: "/pypapers/WhatsApp Image 2026-10-26 at 3.27.07 PM.jpeg" },
+  { label: "WhatsApp Image 2026-10-26 at 3.27.08 PM (1)", url: "/pypapers/WhatsApp Image 2026-10-26 at 3.27.08 PM (1).jpeg" },
+  { label: "WhatsApp Image 2026-10-26 at 3.27.08 PM (2)", url: "/pypapers/WhatsApp Image 2026-10-26 at 3.27.08 PM (2).jpeg" },
+  { label: "WhatsApp Image 2026-10-26 at 3.27.08 PM", url: "/pypapers/WhatsApp Image 2026-10-26 at 3.27.08 PM.jpeg" },
+  { label: "WhatsApp Image 2026-10-26 at 3.27.09 PM (1)", url: "/pypapers/WhatsApp Image 2026-10-26 at 3.27.09 PM (1).jpeg" },
+  { label: "WhatsApp Image 2026-10-26 at 3.27.09 PM (2)", url: "/pypapers/WhatsApp Image 2026-10-26 at 3.27.09 PM (2).jpeg" },
+  { label: "WhatsApp Image 2026-10-26 at 3.27.09 PM", url: "/pypapers/WhatsApp Image 2026-10-26 at 3.27.09 PM.jpeg" },
+  { label: "WhatsApp Image 2026-10-26 at 3.27.10 PM (1)", url: "/pypapers/WhatsApp Image 2026-10-26 at 3.27.10 PM (1).jpeg" },
+  { label: "WhatsApp Image 2026-10-26 at 3.27.10 PM (2)", url: "/pypapers/WhatsApp Image 2026-10-26 at 3.27.10 PM (2).jpeg" },
+  { label: "WhatsApp Image 2026-10-26 at 3.27.10 PM", url: "/pypapers/WhatsApp Image 2026-10-26 at 3.27.10 PM.jpeg" },
+  { label: "WhatsApp Image 2026-10-26 at 3.27.11 PM (1)", url: "/pypapers/WhatsApp Image 2026-10-26 at 3.27.11 PM (1).jpeg" },
+  { label: "WhatsApp Image 2026-10-26 at 3.27.11 PM", url: "/pypapers/WhatsApp Image 2026-10-26 at 3.27.11 PM.jpeg" },
+  { label: "WhatsApp Image 2026-10-26 at 3.27.12 PM", url: "/pypapers/WhatsApp Image 2026-10-26 at 3.27.12 PM.jpeg" },
+];
