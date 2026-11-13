@@ -5,17 +5,6 @@ import { STATUS_THEME } from "@/lib/status";
 import { StatusBadge } from "./status-badge";
 import { cn, formatPct } from "@/lib/utils";
 
-function formatTimestamp(iso: string): string {
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return "";
-  const day = d.getDate();
-  const mon = d.toLocaleString("en-US", { month: "short" });
-  const year = d.getFullYear();
-  const time = d
-    .toLocaleString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
-    .replace(/\s+/g, " ");
-  return `${day} ${mon} ${year}, ${time}`;
-}
 
 export function SubjectCard({ subject }: { subject: Subject }) {
   const theme = STATUS_THEME[subject.displayStatus];
@@ -49,11 +38,6 @@ export function SubjectCard({ subject }: { subject: Subject }) {
         <p className="truncate text-xs text-muted">
           {subject.teacher || "Faculty to be assigned"}
         </p>
-        {subject.lastUpdated && (
-          <p className="mt-0.5 text-[11px] text-muted/70">
-            Last updated: {formatTimestamp(subject.lastUpdated)}
-          </p>
-        )}
         <div className="mt-1.5">
           <StatusBadge status={subject.displayStatus} size="sm" />
         </div>
