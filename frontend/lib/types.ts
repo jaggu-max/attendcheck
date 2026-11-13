@@ -29,6 +29,7 @@ export interface RawSubject {
   isStarted: boolean;
   buffer: BufferInfo;
   recovery: RecoveryInfo;
+  lastUpdated?: string;
 }
 
 export interface Subject extends RawSubject {

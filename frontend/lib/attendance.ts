@@ -61,8 +61,30 @@ interface RawResponse {
 function normalize(raw: RawResponse): AttendanceData {
   const minimumRequired = raw.minimumRequired ?? MIN_REQUIRED;
   const rawSubjects = raw.subjects ?? [];
+  const fallbackTs = new Date().toISOString();
 
-  const subjects: Subject[] = rawSubjects.map((s) => {
+  // Deduplicate raw subjects by courseCode — prefer the entry whose subject name
+  // differs from the code (a real name like "TOC" beats a bare code like "BCS503")
+  const dedupedRaw = rawSubjects.reduce<typeof rawSubjects>((acc, s) => {
+    const code = (s.courseCode || "").trim().toUpperCase();
+    const existingIdx = acc.findIndex(
+      (e) => (e.courseCode || "").trim().toUpperCase() === code
+    );
+    if (existingIdx === -1) {
+      acc.push(s);
+    } else {
+      const existing = acc[existingIdx];
+      const existingName = (existing.subject || "").trim().toUpperCase();
+      const newName = (s.subject || "").trim().toUpperCase();
+      // Replace only if existing entry's name is just the code but new one has a real name
+      if (existingName === code && newName !== code) {
+        acc[existingIdx] = s;
+      }
+    }
+    return acc;
+  }, []);
+
+  const subjects: Subject[] = dedupedRaw.map((s) => {
     const courseClean = (s.courseCode || "").trim();
     const teacherClean = (s.teacher || "").trim();
     const classTaken = Number(s.conducted || 0);
@@ -79,6 +101,7 @@ function normalize(raw: RawResponse): AttendanceData {
       conducted: isStarted ? classTaken : 0,
       teacher: teacherClean && teacherClean.toLowerCase() !== "faculty" ? teacherClean : "Faculty to be assigned",
       displayStatus: deriveStatus(pct, isStarted, minimumRequired),
+      lastUpdated: s.lastUpdated ?? fallbackTs,
     };
   }).filter((s) => {
     if (s.isStarted) return true;

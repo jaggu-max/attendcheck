@@ -107,8 +107,14 @@ class AttendanceCacheManager:
         student = data["students_by_usn"].get(norm_usn)
         if student:
             # Add updatedAt timestamp
+            sync_ts = self.last_sync_iso or datetime.now(timezone.utc).isoformat()
             student_copy = dict(student)
-            student_copy["updatedAt"] = self.last_sync_iso or datetime.now(timezone.utc).isoformat()
+            student_copy["updatedAt"] = sync_ts
+            # Inject per-subject lastUpdated timestamp
+            if "subjects" in student_copy:
+                student_copy["subjects"] = [
+                    {**subj, "lastUpdated": sync_ts} for subj in student_copy["subjects"]
+                ]
             return student_copy
         
         return None

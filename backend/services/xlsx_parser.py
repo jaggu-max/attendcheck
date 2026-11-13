@@ -200,6 +200,23 @@ def parse_worksheet(sheet: openpyxl.worksheet.worksheet.Worksheet, section: str)
             "conducted": conducted_count,
         })
 
+    # Deduplicate subject_cols by course_code — keep the entry whose subject_name differs
+    # from the course_code (i.e. a real name like "TOC" beats a bare code like "BCS503")
+    seen_codes: dict = {}
+    deduped_cols = []
+    for entry in subject_cols:
+        code = entry["course_code"]
+        if code not in seen_codes:
+            seen_codes[code] = len(deduped_cols)
+            deduped_cols.append(entry)
+        else:
+            # Prefer whichever entry has a real subject name (not equal to the code itself)
+            existing_idx = seen_codes[code]
+            existing = deduped_cols[existing_idx]
+            if existing["subject_name"] == code and entry["subject_name"] != code:
+                deduped_cols[existing_idx] = entry
+    subject_cols = deduped_cols
+
     # If conducted count for subjects is 0 in header row, attempt to infer max attended in data rows
     for s_info in subject_cols:
         if s_info["conducted"] == 0:
